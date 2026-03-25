@@ -255,9 +255,21 @@ tr:hover td{background:var(--s2);}
     <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th>Prénom</th><th>Nom</th><th>Genre</th><th>Âge</th><th>Tranche</th><th>Téléphone</th>
-          <th>Email</th><th>Ville</th><th>Statut</th><th>Connaît réseaux?</th>
-          <th>Vu post PO?</th><th>Visites</th><th>Converti</th><th>Supprimer</th>
+          <th>Prénom</th>
+          <th>Nom</th>
+          <th>Genre</th>
+          <th>Âge</th>
+          <th>Tranche</th>
+          <th>Téléphone</th>
+          <th>Email</th>
+          <th>Code postal</th>
+          <th>Ville</th>
+          <th>Statut</th>
+          <th>Connaît réseaux?</th>
+          <th>Vu post PO?</th>
+          <th>Visites</th>
+          <th>Converti</th>
+          <th>Supprimer</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -694,6 +706,7 @@ async function doSubmit(){
       age:parseInt(document.getElementById('f-age').value)||null,
       telephone:getTel(),
       email:document.getElementById('f-email').value.trim()||null,
+      code_postal: document.getElementById('f-cp').value.trim(),
       ville:document.getElementById('f-ville').value.trim()||null,
       inscrit_salle:fState.inscrit||null,
       connait_salle:(fState.inscrit==='oui')?'oui':(fState.connait||null),
@@ -870,6 +883,7 @@ function renderTable(){
       <td><span class="chip cn" style="font-size:.65rem">${trancheAge(v.age)}</span></td>
       <td>${esc(v.telephone)||'<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:.76rem">${esc(v.email)||'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${v.code_postal || '<span style="color:var(--muted)">—</span>'}</td>
       <td>${esc(v.ville)||'<span style="color:var(--muted)">—</span>'}</td>
       <td>${sc(v.inscrit_salle)}</td>
       <td>${yn(v.connait_reseaux)}</td>
