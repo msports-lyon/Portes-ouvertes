@@ -659,29 +659,7 @@ async function doConfirm(){
   finally{btn.disabled=false;btn.textContent='CONFIRMER MON PASSAGE →';}
 }
 
-async function doSubmit(){
-  const pub=document.getElementById('pub');
-  if(!fState.connait_rs||!fState.vu_post){
-    if(!fState.connait_rs)document.querySelectorAll('#rpills-connait-rs .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});
-    if(!fState.vu_post)document.querySelectorAll('#rpills-vu-post .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});
-    toast('t3','err','⚠️ Merci de répondre aux deux questions.');return;
-  }
-  const btn=document.getElementById('btn-submit');
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Enregistrement…';
-  try{
-    await insert({
-      prenom:pub._prenom||'',nom:pub._nom||'',
-      sexe:fState.sexe||null,
-      age:parseInt(document.getElementById('f-age').value)||null,
-      telephone:getTel(),
-      email:document.getElementById('f-email').value.trim()||null,
-      ville:document.getElementById('f-ville').value.trim()||null,
-      inscrit_salle:fState.inscrit||null,
-      connait_salle:(fState.inscrit==='oui')?'oui':(fState.connait||null),
-      connait_reseaux:fState.connait_rs||null,
-      vu_post_po:fState.vu_post||null,
-      nb_visites:1,converti:false
-    });
+async function doSubmit(){ const pub=document.getElementById('pub'); if(!fState.connait_rs||!fState.vu_post){ if(!fState.connait_rs)document.querySelectorAll('#rpills-connait-rs .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);}); if(!fState.vu_post)document.querySelectorAll('#rpills-vu-post .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);}); toast('t3','err','⚠️ Merci de répondre aux deux questions.');return; } const btn=document.getElementById('btn-submit'); btn.disabled=true;btn.innerHTML='<span class="spin"></span>Enregistrement…'; try{ await insert({ prenom:pub._prenom||'',nom:pub._nom||'', sexe:fState.sexe||null, age:parseInt(document.getElementById('f-age').value)||null, telephone:getTel(), email:document.getElementById('f-email').value.trim()||null, ville:document.getElementById('f-ville').value.trim()||null, inscrit_salle:fState.inscrit||null, connait_salle:(fState.inscrit==='oui')?'oui':(fState.connait||null), connait_reseaux:fState.connait_rs||null, vu_post_po:fState.vu_post||null, nb_visites:1,converti:false }); const prenom=pub._prenom||''; resetForm(); toast('t1','ok',✅ Inscription enregistrée ${prenom} !); }catch(e){toast('t3','err','❌ Une erreur est survenue, réessaie.');} finally{btn.disabled=false;btn.textContent='VALIDER MON INSCRIPTION →';} }
 
     const prenom=pub._prenom||'';
     document.getElementById('done-title').textContent = "C'est bon !";
