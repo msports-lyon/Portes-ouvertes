@@ -379,13 +379,13 @@ tr:hover td{background:var(--s2);}
 
       <div class="divider"></div>
 
-      <div class="fg">
+     <div class="fg">
         <div class="flabel">Tu es déjà inscrit(e) à la salle ? <span class="req">*</span></div>
         <div class="rpills" id="rpills-inscrit">
-          <div class="rpill" data-val="renouvellement">🔄 Oui, à renouveler</div>
-          <div class="rpill" data-val="non">❌ Non</div></div>
+          <div class="rpill" data-val="renouvellement" onclick="pickPill('inscrit',this);toggleConnaitBlock()">🔄 Oui, à renouveler</div>
+          <div class="rpill" data-val="non" onclick="pickPill('inscrit',this);toggleConnaitBlock()">❌ Non</div>
         </div>
-      </div>
+    </div>
 
       <div id="connait-block" style="display:none">
         <div class="fg">
