@@ -494,12 +494,15 @@ function getTel(){
 function handleCpInput(el){
   el.value=el.value.replace(/\D/g,'').slice(0,5);
   markValid(el);
+
   const villeSel=document.getElementById('f-ville');
+
   if(el.value.length<5){
     villeSel.innerHTML='<option value="">Choisis d\'abord un code postal</option>';
     villeSel.disabled=true;
     return;
   }
+
   loadVillesByCp(el.value);
 }
 
@@ -507,17 +510,24 @@ async function loadVillesByCp(cp){
   const villeSel=document.getElementById('f-ville');
   villeSel.disabled=true;
   villeSel.innerHTML='<option value="">Chargement…</option>';
+
   try{
     const r=await fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json&geometry=centre`);
     const data=await r.json();
+
     const villes=[...new Set((data||[]).map(v=>v.nom).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+
     if(!villes.length){
       villeSel.innerHTML='<option value="">Aucune ville trouvée</option>';
       return;
     }
-    villeSel.innerHTML='<option value="">Sélectionner une ville</option>'+villes.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+
+    villeSel.innerHTML='<option value="">Sélectionner une ville</option>' + villes.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
     villeSel.disabled=false;
-    if(villes.length===1)villeSel.value=villes[0];
+
+    if(villes.length===1){
+      villeSel.value=villes[0];
+    }
   }catch(e){
     villeSel.innerHTML='<option value="">Erreur de chargement</option>';
   }
@@ -550,6 +560,26 @@ function formatVilleLabel(v){
     .replace(/\bLe\b/g,'le');
 }
 
+function villeDepuisCodePostal(cp, villeChoisie=''){
+  cp = (cp || '').trim();
+  villeChoisie = (villeChoisie || '').trim();
+
+  const lyonMap = {
+    '69001': 'Lyon 1',
+    '69002': 'Lyon 2',
+    '69003': 'Lyon 3',
+    '69004': 'Lyon 4',
+    '69005': 'Lyon 5',
+    '69006': 'Lyon 6',
+    '69007': 'Lyon 7',
+    '69008': 'Lyon 8',
+    '69009': 'Lyon 9'
+  };
+
+  if (lyonMap[cp]) return lyonMap[cp];
+  return villeChoisie || '';
+}
+  
 function markInvalid(el){el.classList.add('invalid','shake');setTimeout(()=>el.classList.remove('shake'),400);}
 function markValid(el){el.classList.remove('invalid');}
 
@@ -695,10 +725,15 @@ async function doSubmit(){
     toast('t3','err','⚠️ Merci de répondre aux deux questions.');
     return;
   }
+
   const btn=document.getElementById('btn-submit');
   btn.disabled=true;
   btn.innerHTML='<span class="spin"></span>Enregistrement…';
+
   try{
+    const cp = document.getElementById('f-cp').value.trim();
+    const ville = villeDepuisCodePostal(cp, document.getElementById('f-ville').value.trim());
+
     await insert({
       prenom:pub._prenom||'',
       nom:pub._nom||'',
@@ -706,8 +741,8 @@ async function doSubmit(){
       age:parseInt(document.getElementById('f-age').value)||null,
       telephone:getTel(),
       email:document.getElementById('f-email').value.trim()||null,
-      code_postal: document.getElementById('f-cp').value.trim(),
-      ville:document.getElementById('f-ville').value.trim()||null,
+      code_postal:cp||null,
+      ville:ville||null,
       inscrit_salle:fState.inscrit||null,
       connait_salle:(fState.inscrit==='oui')?'oui':(fState.connait||null),
       connait_reseaux:fState.connait_rs||null,
@@ -717,14 +752,9 @@ async function doSubmit(){
     });
 
     const prenom=pub._prenom||'';
-    const doneTitle=document.getElementById('done-title');
-    const doneSub=document.getElementById('done-sub');
-    const stepper=document.getElementById('stepper');
-
-    if(doneTitle)doneTitle.textContent="C'est bon !";
-    if(doneSub)doneSub.textContent=`${prenom}, ton inscription a bien été enregistrée.`;
-    if(stepper)stepper.style.display='none';
-
+    document.getElementById('done-title').textContent="C'est bon !";
+    document.getElementById('done-sub').textContent=`${prenom}, ton inscription a bien été enregistrée.`;
+    document.getElementById('stepper').style.display='none';
     goStep('ps-done');
   }catch(e){
     toast('t3','err','❌ Une erreur est survenue, réessaie.');
