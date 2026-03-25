@@ -829,7 +829,8 @@ function renderDash(){
   mkDonut('c-conv',['Convertis','Non convertis'],[conv,total-conv],[GREEN,GRAY]);
 }
 
-function renderTable(data){
+function renderTable(){
+  const data = visitors;
   const tbody=document.getElementById('tbody');
   if(!data.length){
     tbody.innerHTML='<tr><td colspan="12" class="empty">Aucune donnée</td></tr>';
