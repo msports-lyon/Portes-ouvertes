@@ -256,7 +256,7 @@ tr:hover td{background:var(--s2);}
         <thead><tr>
           <th>Prénom</th><th>Nom</th><th>Genre</th><th>Âge</th><th>Tranche</th><th>Téléphone</th>
           <th>Email</th><th>Ville</th><th>Statut</th><th>Connaît réseaux?</th>
-          <th>Vu post PO?</th><th>Visites</th><th>Converti</th><th></th>
+          <th>Vu post PO?</th><th>Visites</th><th>Converti</th><th>Supprimer</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -682,11 +682,18 @@ async function doSubmit(){
       vu_post_po:fState.vu_post||null,
       nb_visites:1,converti:false
     });
+
     const prenom=pub._prenom||'';
-    resetForm();
-    toast('t1','ok',`✅ Inscription enregistrée ${prenom} !`);
-  }catch(e){toast('t3','err','❌ Une erreur est survenue, réessaie.');}
-  finally{btn.disabled=false;btn.textContent='VALIDER MON INSCRIPTION →';}
+    document.getElementById('done-title').textContent = "C'est bon !";
+    document.getElementById('done-sub').textContent = `${prenom}, ton inscription a bien été enregistrée.`;
+
+    document.getElementById('stepper').style.display='none';
+    goStep('ps-done');
+  }catch(e){
+    toast('t3','err','❌ Une erreur est survenue, réessaie.');
+  }finally{
+    btn.disabled=false;btn.textContent='VALIDER MON INSCRIPTION →';
+  }
 }
 
 function resetForm(){
