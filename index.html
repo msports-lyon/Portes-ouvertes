@@ -829,40 +829,49 @@ function renderDash(){
   mkDonut('c-conv',['Convertis','Non convertis'],[conv,total-conv],[GREEN,GRAY]);
 }
 
-function renderTable(){
-  const q=(document.getElementById('srch')?.value||'').toLowerCase();
-  const f=visitors.filter(v=>(v.prenom+v.nom+v.email+v.ville+'').toLowerCase().includes(q));
-  const tb=document.getElementById('tbody'),em=document.getElementById('empty');
-  if(!f.length){tb.innerHTML='';em.style.display='block';return;}
-  em.style.display='none';
-  const yn=v=>v==='oui'?'<span class="chip cy">✓ Oui</span>':'<span class="chip cn">Non</span>';
-  const gc=g=>g==='Homme'?'<span class="chip ch">♂ H</span>':g==='Femme'?'<span class="chip cf">♀ F</span>':'<span class="chip cn">—</span>';
-  const sc=s=>{
-    if(s==='oui')return'<span class="chip cy">Membre</span>';
-    if(s==='ancien')return'<span class="chip ca">Ancien</span>';
-    if(s==='non')return'<span class="chip cn">Non membre</span>';
-    return'<span class="chip cn">—</span>';
-  };
-  tb.innerHTML=f.map(v=>`<tr>
-    <td>${esc(v.prenom)}</td><td>${esc(v.nom)}</td><td>${gc(v.sexe)}</td>
-    <td>${v.age||'<span style="color:var(--muted)">—</span>'}</td>
-    <td><span class="chip cn" style="font-size:.65rem">${trancheAge(v.age)}</span></td>
-    <td>${esc(v.telephone)||'<span style="color:var(--muted)">—</span>'}</td>
-    <td style="font-size:.76rem">${esc(v.email)||'<span style="color:var(--muted)">—</span>'}</td>
-    <td>${esc(v.ville)||'<span style="color:var(--muted)">—</span>'}</td>
-    <td>${sc(v.inscrit_salle)}</td>
-    <td>${yn(v.connait_reseaux)}</td>
-    <td>${yn(v.vu_post_po)}</td>
-    <td><div class="vctr">
-      <button class="cbtn" onclick="chgVisit(${v.id},-1)">−</button>
-      <span class="vnum">${v.nb_visites||1}</span>
-      <button class="cbtn" onclick="chgVisit(${v.id},1)">+</button>
-    </div></td>
-    <td style="display:flex;gap:6px;align-items:center">
-      ${v.inscrit_salle==='oui'?'':`<button class="btn-conv ${v.converti?'conv-on':''}" onclick="toggleConverti(${v.id})" title="${v.converti?'Inscrit':'Non inscrit'}">${v.converti?'✓':'○'}</button>`}
-      <button class="btn-del" onclick="askDel(${v.id})">🗑</button>
-    </td>
-  </tr>`).join('');
+function renderTable(data){
+  const tbody=document.getElementById('tbody');
+  if(!data.length){
+    tbody.innerHTML='<tr><td colspan="12" class="empty">Aucune donnée</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML=data.map(v=>`
+    <tr>
+      <td>${v.prenom||''}</td>
+      <td>${v.nom||''}</td>
+      <td>${v.ville||''}</td>
+      <td>${v.inscrit_salle==='oui' ? '<span class="chip cy">MEMBRE</span>' : '<span class="chip cn">NON</span>'}</td>
+      <td>${v.connait_reseaux==='oui' ? '<span class="chip cy">OUI</span>' : '<span class="chip cn">NON</span>'}</td>
+      <td>${v.vu_post_po==='oui' ? '<span class="chip cy">OUI</span>' : '<span class="chip cn">NON</span>'}</td>
+
+      <!-- VISITES -->
+      <td>
+        <div class="vctr">
+          <button class="cbtn" onclick="decVisit(${v.id})">-</button>
+          <span class="vnum">${v.nb_visites||0}</span>
+          <button class="cbtn" onclick="incVisit(${v.id})">+</button>
+        </div>
+      </td>
+
+      <!-- CONVERTI -->
+      <td>
+        ${v.inscrit_salle==='oui' 
+          ? '' 
+          : `<button class="btn-conv ${v.converti?'conv-on':''}" 
+              onclick="toggleConverti(${v.id})"
+              title="${v.converti?'Inscrit':'Non inscrit'}">
+              ${v.converti?'✓':'○'}
+            </button>`
+        }
+      </td>
+
+      <!-- SUPPRIMER -->
+      <td>
+        <button class="btn-del" onclick="askDel(${v.id})">🗑</button>
+      </td>
+    </tr>
+  `).join('');
 }
 
 async function toggleConverti(id){
