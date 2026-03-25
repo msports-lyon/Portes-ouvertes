@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -407,9 +408,24 @@ tr:hover td{background:var(--s2);}
       <button class="btn-outline" onclick="goStep('ps2b',2)">← Retour</button>
       <div class="toast" id="t3"></div>
     </div>
-  
+
+    <div class="step" id="ps-done">
+      <div class="done-wrap">
+        <div class="done-icon">💪</div>
+        <div class="done-title" id="done-title">C'est bon !</div>
+        <p class="done-sub" id="done-sub"></p>
+        <div class="done-perks">
+          <p>Aujourd'hui c'est gratuit</p>
+          <ul>
+            <li>✅ Accès libre aux machines</li>
+            <li>✅ Cours collectifs offerts</li>
+            <li>✅ Coaching sur demande</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
   </div>
-</div>
 </div>
 
 <div class="modal-bg" id="del-modal">
@@ -659,18 +675,49 @@ async function doConfirm(){
   finally{btn.disabled=false;btn.textContent='CONFIRMER MON PASSAGE →';}
 }
 
-async function doSubmit(){ const pub=document.getElementById('pub'); if(!fState.connait_rs||!fState.vu_post){ if(!fState.connait_rs)document.querySelectorAll('#rpills-connait-rs .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);}); if(!fState.vu_post)document.querySelectorAll('#rpills-vu-post .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);}); toast('t3','err','⚠️ Merci de répondre aux deux questions.');return; } const btn=document.getElementById('btn-submit'); btn.disabled=true;btn.innerHTML='<span class="spin"></span>Enregistrement…'; try{ await insert({ prenom:pub._prenom||'',nom:pub._nom||'', sexe:fState.sexe||null, age:parseInt(document.getElementById('f-age').value)||null, telephone:getTel(), email:document.getElementById('f-email').value.trim()||null, ville:document.getElementById('f-ville').value.trim()||null, inscrit_salle:fState.inscrit||null, connait_salle:(fState.inscrit==='oui')?'oui':(fState.connait||null), connait_reseaux:fState.connait_rs||null, vu_post_po:fState.vu_post||null, nb_visites:1,converti:false }); const prenom=pub._prenom||''; resetForm(); toast('t1','ok',✅ Inscription enregistrée ${prenom} !); }catch(e){toast('t3','err','❌ Une erreur est survenue, réessaie.');} finally{btn.disabled=false;btn.textContent='VALIDER MON INSCRIPTION →';} }
+async function doSubmit(){
+  const pub=document.getElementById('pub');
+  if(!fState.connait_rs||!fState.vu_post){
+    if(!fState.connait_rs)document.querySelectorAll('#rpills-connait-rs .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});
+    if(!fState.vu_post)document.querySelectorAll('#rpills-vu-post .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});
+    toast('t3','err','⚠️ Merci de répondre aux deux questions.');
+    return;
+  }
+  const btn=document.getElementById('btn-submit');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span>Enregistrement…';
+  try{
+    await insert({
+      prenom:pub._prenom||'',
+      nom:pub._nom||'',
+      sexe:fState.sexe||null,
+      age:parseInt(document.getElementById('f-age').value)||null,
+      telephone:getTel(),
+      email:document.getElementById('f-email').value.trim()||null,
+      ville:document.getElementById('f-ville').value.trim()||null,
+      inscrit_salle:fState.inscrit||null,
+      connait_salle:(fState.inscrit==='oui')?'oui':(fState.connait||null),
+      connait_reseaux:fState.connait_rs||null,
+      vu_post_po:fState.vu_post||null,
+      nb_visites:1,
+      converti:false
+    });
 
     const prenom=pub._prenom||'';
-    document.getElementById('done-title').textContent = "C'est bon !";
-    document.getElementById('done-sub').textContent = `${prenom}, ton inscription a bien été enregistrée.`;
+    const doneTitle=document.getElementById('done-title');
+    const doneSub=document.getElementById('done-sub');
+    const stepper=document.getElementById('stepper');
 
-    document.getElementById('stepper').style.display='none';
+    if(doneTitle)doneTitle.textContent="C'est bon !";
+    if(doneSub)doneSub.textContent=`${prenom}, ton inscription a bien été enregistrée.`;
+    if(stepper)stepper.style.display='none';
+
     goStep('ps-done');
   }catch(e){
     toast('t3','err','❌ Une erreur est survenue, réessaie.');
   }finally{
-    btn.disabled=false;btn.textContent='VALIDER MON INSCRIPTION →';
+    btn.disabled=false;
+    btn.textContent='VALIDER MON INSCRIPTION →';
   }
 }
 
