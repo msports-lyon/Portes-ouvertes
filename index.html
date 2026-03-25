@@ -873,7 +873,6 @@ function renderTable(data){
     </tr>
   `).join('');
 }
-
 async function toggleConverti(id){
   const r=visitors.find(v=>v.id===id);if(!r)return;
   r.converti=!r.converti;renderTable();renderDash();
