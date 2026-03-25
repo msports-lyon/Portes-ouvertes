@@ -459,257 +459,6 @@ tr:hover td{background:var(--s2);}
 </div>
 
 <script>
-const SB_URL='https://hjoxlrzuqorfqgqkkdkx.supabase.co';
-const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqb3hscnp1cW9yZnFncWtrZGt4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODQ1NzAsImV4cCI6MjA4OTc2MDU3MH0.b_mksJ8OLm9rCkzYtmGMJAHpBn5oc0WXYKjTH5QZ800';
-const PWD='Msports-accueil.PO';
-const TBL='visiteurs';
-
-let visitors=[],fState={sexe:null,inscrit:null,connait:null,connait_rs:null,vu_post:null},retV=null,delId=null,charts={};
-
-const H=(x={})=>({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,...x});
-const getAll=()=>fetch(SB_URL+'/rest/v1/'+TBL+'?select=*&order=created_at.desc',{headers:H()}).then(r=>r.json());
-const search=(p,n)=>fetch(SB_URL+'/rest/v1/'+TBL+'?select=*&prenom=ilike.'+encodeURIComponent(p)+'&nom=ilike.'+encodeURIComponent(n)+'&limit=1',{headers:H()}).then(r=>r.json());
-const insert=d=>fetch(SB_URL+'/rest/v1/'+TBL,{method:'POST',headers:H({'Prefer':'return=minimal'}),body:JSON.stringify(d)}).then(r=>{if(!r.ok)throw r;});
-const patch=(id,d)=>fetch(SB_URL+'/rest/v1/'+TBL+'?id=eq.'+id,{method:'PATCH',headers:H({'Prefer':'return=minimal'}),body:JSON.stringify(d)});
-const remove=id=>fetch(SB_URL+'/rest/v1/'+TBL+'?id=eq.'+id,{method:'DELETE',headers:H()}).then(r=>{if(!r.ok)throw r;});
-
-function checkAge(input){
-  const v=parseInt(input.value);
-  const warn=document.getElementById('age-warn');
-  if(input.value&&v<16){warn.style.display='block';input.style.borderColor='var(--danger)';}
-  else{warn.style.display='none';input.style.borderColor='';}
-}
-
-function fmtTel(input){
-  let v=input.value.replace(/\D/g,'');
-  if(v.startsWith('33'))v=v.slice(2);
-  if(v.startsWith('0'))v=v.slice(1);
-  v=v.slice(0,9);
-  let fmt='';
-  for(let i=0;i<v.length;i++){if(i===1||(i>1&&(i-1)%2===0))fmt+=' ';fmt+=v[i];}
-  input.value=fmt;
-}
-function getTel(){
-  const raw=document.getElementById('f-tel').value.replace(/\s/g,'');
-  if(!raw)return null;
-  let d=raw.replace(/\D/g,'');
-  if(d.startsWith('33'))d=d.slice(2);
-  if(d.startsWith('0'))d=d.slice(1);
-  return '+33'+d;
-}
-
-function handleCpInput(el){
-  el.value=el.value.replace(/\D/g,'').slice(0,5);
-  markValid(el);
-
-  const villeSel=document.getElementById('f-ville');
-
-  if(el.value.length<5){
-    villeSel.innerHTML='<option value="">Choisis d\'abord un code postal</option>';
-    villeSel.disabled=true;
-    return;
-  }
-
-  loadVillesByCp(el.value);
-}
-
-async function loadVillesByCp(cp){
-  const villeSel=document.getElementById('f-ville');
-  villeSel.disabled=true;
-  villeSel.innerHTML='<option value="">Chargement…</option>';
-
-  try{
-    const r=await fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json&geometry=centre`);
-    const data=await r.json();
-
-    const villes=[...new Set((data||[]).map(v=>v.nom).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
-
-    if(!villes.length){
-      villeSel.innerHTML='<option value="">Aucune ville trouvée</option>';
-      return;
-    }
-
-    villeSel.innerHTML='<option value="">Sélectionner une ville</option>' + villes.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
-    villeSel.disabled=false;
-
-    if(villes.length===1){
-      villeSel.value=villes[0];
-    }
-  }catch(e){
-    villeSel.innerHTML='<option value="">Erreur de chargement</option>';
-  }
-}
-
-function normalizeVilleKey(v){
-  return (v||'')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'')
-    .replace(/[-'’]/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-
-function formatVilleLabel(v){
-  const base=(v||'').trim().toLowerCase();
-  if(!base)return '(NR)';
-  return base
-    .split(/([\s-])/)
-    .map(part=>{
-      if(part===' '||part==='-')return part;
-      return part.charAt(0).toUpperCase()+part.slice(1);
-    })
-    .join('')
-    .replace(/\bLes\b/g,'les')
-    .replace(/\bDes\b/g,'des')
-    .replace(/\bDe\b/g,'de')
-    .replace(/\bLa\b/g,'la')
-    .replace(/\bLe\b/g,'le');
-}
-
-function villeDepuisCodePostal(cp, villeChoisie=''){
-  cp = (cp || '').trim();
-  villeChoisie = (villeChoisie || '').trim();
-
-  const lyonMap = {
-    '69001': 'Lyon 1',
-    '69002': 'Lyon 2',
-    '69003': 'Lyon 3',
-    '69004': 'Lyon 4',
-    '69005': 'Lyon 5',
-    '69006': 'Lyon 6',
-    '69007': 'Lyon 7',
-    '69008': 'Lyon 8',
-    '69009': 'Lyon 9'
-  };
-
-  if (lyonMap[cp]) return lyonMap[cp];
-  return villeChoisie || '';
-}
-  
-function markInvalid(el){el.classList.add('invalid','shake');setTimeout(()=>el.classList.remove('shake'),400);}
-function markValid(el){el.classList.remove('invalid');}
-
-function validateStep2(){
-  let ok=true;
-  if(!fState.sexe){document.querySelectorAll('#rpills-sexe .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});ok=false;}
-  const ageEl=document.getElementById('f-age');
-  const ageVal=parseInt(ageEl.value);
-  if(!ageEl.value||isNaN(ageVal)||ageVal<16||ageVal>99){markInvalid(ageEl);ok=false;}
-  else markValid(ageEl);
-  const telRaw=document.getElementById('f-tel').value.replace(/\s/g,'');
-  const telWrap=document.getElementById('tel-wrap');
-  if(!telRaw||telRaw.replace(/\D/g,'').length<9){markInvalid(telWrap);ok=false;}else markValid(telWrap);
-  const emailEl=document.getElementById('f-email');
-  if(!emailEl.value.trim()||!/^[^\s@]+@[a-zA-Z0-9-]{2,20}\.[a-zA-Z]{2,4}$/.test(emailEl.value.trim())){markInvalid(emailEl);ok=false;}else markValid(emailEl);
-  const cpEl=document.getElementById('f-cp');
-  if(!/^\d{5}$/.test(cpEl.value.trim())){markInvalid(cpEl);ok=false;}else markValid(cpEl);
-  const villeEl=document.getElementById('f-ville');
-  if(!villeEl.value.trim()){markInvalid(villeEl);ok=false;}else markValid(villeEl);
-  if(!fState.inscrit){document.querySelectorAll('#rpills-inscrit .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});ok=false;}
-  if(!fState.connait){
-  if(!ok){toast('t2b','err','⚠️ Merci de remplir tous les champs obligatoires.');return;}
-  goStep('ps3',3);
-}
-
-function route(){
-  document.getElementById('loading').style.display='none';
-  const pub=location.search.includes('mode=inscription')||location.hash==='#inscription';
-  if(pub){document.getElementById('pub').style.display='block';initToggles();return;}
-  sessionStorage.getItem('ok')==='1'?showApp():(document.getElementById('lock-screen').style.display='flex');
-}
-
-function initToggles(){
-  ['tgl-insta','tgl-post'].forEach(id=>{
-    const el=document.getElementById(id);if(!el)return;
-    const clone=el.cloneNode(true);el.parentNode.replaceChild(clone,el);
-    document.getElementById(id).addEventListener('click',function(e){
-      e.preventDefault();e.stopPropagation();
-      this.classList.toggle('on');
-      this.querySelector('.tgl-box').textContent=this.classList.contains('on')?'✓':'';
-    });
-  });
-}
-
-function auth(){
-  if(document.getElementById('pwd').value===PWD){sessionStorage.setItem('ok','1');document.getElementById('lock-screen').style.display='none';showApp();}
-  else{document.getElementById('auth-err').style.display='block';document.getElementById('pwd').value='';}
-}
-function logout(){sessionStorage.removeItem('ok');location.reload();}
-async function showApp(){
-  document.getElementById('app').style.display='block';
-  visitors=await getAll()||[];updateBadge();renderDash();
-}
-
-function tab(id,btn){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
-  document.getElementById('view-'+id).classList.add('on');btn.classList.add('on');
-  if(id==='db')getAll().then(d=>{visitors=d||[];updateBadge();renderDash();});
-  if(id==='lst')getAll().then(d=>{visitors=d||[];renderTable();});
-}
-async function refresh(){visitors=await getAll()||[];updateBadge();renderDash();}
-function updateBadge(){document.getElementById('badge').textContent=visitors.length;}
-
-function updateStepper(active){
-  for(let i=1;i<=3;i++){
-    const n=document.getElementById('sn'+i),l=document.getElementById('sl'+i);
-    if(i<active){n.className='st-num done';n.textContent='✓';l.className='st-label';}
-    else if(i===active){n.className='st-num active';n.textContent=i;l.className='st-label active';}
-    else{n.className='st-num';n.textContent=i;l.className='st-label';}
-    if(i<3)document.getElementById('sl-'+i).className='st-line'+(i<active?' done':'');
-  }
-}
-
-function goStep(id,stepNum){
-  document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));
-  document.getElementById(id).classList.add('on');
-  if(stepNum)updateStepper(stepNum);window.scrollTo(0,0);
-}
-function pickPill(group,el){
-  fState[group]=el.dataset.val;
-  el.closest('.rpills').querySelectorAll('.rpill').forEach(p=>p.classList.remove('on','invalid'));
-  el.classList.add('on');
-}
-function toggleConnaitBlock(){
-  document.getElementById('connait-block').style.display='block';
-}
-function toast(id,type,msg){
-  const t=document.getElementById(id);t.className='toast '+(type==='ok'?'tok':'terr');t.textContent=msg;
-  if(type==='ok')setTimeout(()=>t.className='toast',5000);
-}
-
-async function doSearch(){
-  const prenom=document.getElementById('s-prenom').value.trim();
-  const nom=document.getElementById('s-nom').value.trim();
-  let ok=true;
-  if(!prenom){markInvalid(document.getElementById('s-prenom'));ok=false;}else markValid(document.getElementById('s-prenom'));
-  if(!nom){markInvalid(document.getElementById('s-nom'));ok=false;}else markValid(document.getElementById('s-nom'));
-  if(!ok){toast('t1','err','⚠️ Prénom et nom sont obligatoires.');return;}
-  const btn=document.getElementById('btn-search');
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Recherche…';
-  try{
-    const res=await search(prenom,nom);
-    if(res&&res.length){
-      retV=res[0];const r=retV;
-      document.getElementById('ret-card').innerHTML=`
-        <div class="rname">${esc(r.prenom)} ${esc(r.nom)}</div>
-        <div class="rinfo">
-          ${r.ville?'📍 '+esc(r.ville)+'<br>':''}
-          ${r.telephone?'📞 '+esc(r.telephone)+'<br>':''}
-          ${r.email?'✉️ '+esc(r.email)+'<br>':''}
-        </div>
-        <div class="rcount">${r.nb_visites||1} passage${(r.nb_visites||1)>1?'s':''}  au total</div>`;
-      goStep('ps2a',1);
-    }else{
-      document.getElementById('pub')._prenom=prenom;
-      document.getElementById('pub')._nom=nom;
-      goStep('ps2b',2);
-    }
-  }catch(e){toast('t1','err','❌ Erreur de connexion, réessaie.');}
-  finally{btn.disabled=false;btn.textContent='CONTINUER →';}
-}
-
 async function doConfirm(){
   if(!retV)return;
   const btn=document.getElementById('btn-confirm');
@@ -719,8 +468,12 @@ async function doConfirm(){
     await patch(retV.id,{nb_visites:nv});
     resetForm();
     toast('t1','ok',`✅ Passage enregistré pour ${retV.prenom} !`);
-  }catch(e){toast('t2a','err','❌ Erreur, réessaie.');}
-  finally{btn.disabled=false;btn.textContent='CONFIRMER MON PASSAGE →';}
+  }catch(e){
+    toast('t2a','err','❌ Erreur, réessaie.');
+  }finally{
+    btn.disabled=false;
+    btn.textContent='CONFIRMER MON PASSAGE →';
+  }
 }
 
 async function doSubmit(){
@@ -750,7 +503,7 @@ async function doSubmit(){
       code_postal:cp||null,
       ville:ville||null,
       inscrit_salle:fState.inscrit||null,
-      connait_salle:(fState.connait||null),
+      connait_salle:fState.connait||null,
       connait_reseaux:fState.connait_rs||null,
       vu_post_po:fState.vu_post||null,
       nb_visites:1,
@@ -771,14 +524,21 @@ async function doSubmit(){
 }
 
 function resetForm(){
-  retV=null;fState={sexe:null,inscrit:null,connait:null,connait_rs:null,vu_post:null};
-  ['s-prenom','s-nom','f-tel','f-email','f-cp','f-age'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  retV=null;
+  fState={sexe:null,inscrit:null,connait:null,connait_rs:null,vu_post:null};
+
+  ['s-prenom','s-nom','f-tel','f-email','f-cp','f-age'].forEach(id=>{
+    const e=document.getElementById(id);
+    if(e)e.value='';
+  });
+
   const villeSel=document.getElementById('f-ville');
   if(villeSel){
-    villeSel.innerHTML='<option value="">Choisis d\'abord un code postal</option>';
+    villeSel.innerHTML='<option value="">Choisis d\\'abord un code postal</option>';
     villeSel.disabled=true;
     villeSel.classList.remove('invalid');
   }
+
   document.querySelectorAll('.rpill').forEach(p=>p.classList.remove('on','invalid'));
   document.getElementById('age-warn').style.display='none';
   document.getElementById('connait-block').style.display='none';
@@ -795,58 +555,99 @@ Chart.defaults.font.family="'Barlow Condensed',sans-serif";
 function mkDonut(id,labels,data,colors){
   if(charts[id])charts[id].destroy();
   charts[id]=new Chart(document.getElementById(id),{
-    type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
-      plugins:{legend:{position:'bottom',labels:{padding:14,font:{family:"'Barlow Condensed',sans-serif",size:12},color:'#888',boxWidth:10,boxHeight:10}},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}`}}}
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      cutout:'65%',
+      plugins:{
+        legend:{
+          position:'bottom',
+          labels:{
+            padding:14,
+            font:{family:"'Barlow Condensed',sans-serif",size:12},
+            color:'#888',
+            boxWidth:10,
+            boxHeight:10
+          }
+        },
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}`}}
+      }
     }
   });
 }
+
 function mkBar(id,labels,data){
   if(charts[id])charts[id].destroy();
   charts[id]=new Chart(document.getElementById(id),{
-    type:'bar',data:{labels,datasets:[{data,backgroundColor:BLUE,borderRadius:4,barPercentage:.55}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw}`}}},
-      scales:{x:{grid:{color:'#1a1a1a'},ticks:{color:'#5a5a5a',font:{family:"'Barlow Condensed',sans-serif",size:11},stepSize:1},border:{display:false}},
-      y:{grid:{display:false},ticks:{color:'#888',font:{family:"'Barlow Condensed',sans-serif",size:12}},border:{display:false}}}
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:BLUE,borderRadius:4,barPercentage:.55}]},
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.raw}`}}
+      },
+      scales:{
+        x:{
+          grid:{color:'#1a1a1a'},
+          ticks:{color:'#5a5a5a',font:{family:"'Barlow Condensed',sans-serif",size:11},stepSize:1},
+          border:{display:false}
+        },
+        y:{
+          grid:{display:false},
+          ticks:{color:'#888',font:{family:"'Barlow Condensed',sans-serif",size:12}},
+          border:{display:false}
+        }
+      }
     }
   });
 }
 
 function trancheAge(a){
   if(!a)return'NR';
-  if(a<18)return'< 18';if(a<=25)return'18-25';if(a<=35)return'26-35';
-  if(a<=45)return'36-45';if(a<=55)return'46-55';return'55+';
+  if(a<18)return'< 18';
+  if(a<=25)return'18-25';
+  if(a<=35)return'26-35';
+  if(a<=45)return'36-45';
+  if(a<=55)return'46-55';
+  return'55+';
 }
 
 function statutLabel(s){
+  if(s==='renouvellement')return'À renouveler';
+  if(s==='non')return'Non membre';
   if(s==='oui')return'Membre actif';
   if(s==='ancien')return'Ancien membre';
-  return'Non membre';
+  return'';
 }
 
 function renderDash(){
   const d=visitors,total=d.length;
   const totalV=d.reduce((s,v)=>s+(v.nb_visites||1),0);
-     document.getElementById('kpis').innerHTML=[
-      {v:total,l:'Visiteurs uniques'},
-      {v:totalV,l:'Passages total'},
-      {v:total?(totalV/total).toFixed(1):0,l:'Visites / personne'},
-      {v:d.filter(v=>v.inscrit_salle==='renouvellement').length,l:'À renouveler'},
-      {v:d.filter(v=>v.inscrit_salle==='non').length,l:'Non inscrits'},
-      {v:d.filter(v=>v.connait_reseaux==='oui').length,l:'Connaissent nos réseaux'},
-      {v:d.filter(v=>v.vu_post_po==='oui').length,l:'Ont vu le post PO'},
-      {v:d.filter(v=>v.converti).length,l:'Convertis'},
-    ].map(k=>`<div class="kpi"><div class="kv">${k.v}</div><div class="kl">${k.l}</div></div>`).join('');
 
-  const hm=d.filter(v=>v.sexe==='Homme').length,fm=d.filter(v=>v.sexe==='Femme').length;
+  document.getElementById('kpis').innerHTML=[
+    {v:total,l:'Visiteurs uniques'},
+    {v:totalV,l:'Passages total'},
+    {v:total?(totalV/total).toFixed(1):0,l:'Visites / personne'},
+    {v:d.filter(v=>v.inscrit_salle==='renouvellement').length,l:'À renouveler'},
+    {v:d.filter(v=>v.inscrit_salle==='non').length,l:'Non inscrits'},
+    {v:d.filter(v=>v.connait_reseaux==='oui').length,l:'Connaissent nos réseaux'},
+    {v:d.filter(v=>v.vu_post_po==='oui').length,l:'Ont vu le post PO'},
+    {v:d.filter(v=>v.converti).length,l:'Convertis'},
+  ].map(k=>`<div class="kpi"><div class="kv">${k.v}</div><div class="kl">${k.l}</div></div>`).join('');
+
+  const hm=d.filter(v=>v.sexe==='Homme').length;
+  const fm=d.filter(v=>v.sexe==='Femme').length;
   mkDonut('c-genre',['Hommes','Femmes','NR'],[hm,fm,total-hm-fm],[BLUE,PINK,GRAY]);
 
-  const mem=d.filter(v=>v.inscrit_salle==='oui').length;
-  const anc=d.filter(v=>v.inscrit_salle==='ancien').length;
+  const renouvellement=d.filter(v=>v.inscrit_salle==='renouvellement').length;
   const nonm=d.filter(v=>v.inscrit_salle==='non').length;
-  mkDonut('c-connait',['Membres actifs','Anciens membres','Non membres'],[mem,anc,nonm],[GREEN,AMBER,BLUE]);
+  const autres=Math.max(0,total-renouvellement-nonm);
+  mkDonut('c-connait',['À renouveler','Non membres','Autres'],[renouvellement,nonm,autres],[AMBER,BLUE,GRAY]);
 
   const crs=d.filter(v=>v.connait_reseaux==='oui').length;
   const vp=d.filter(v=>v.vu_post_po==='oui').length;
@@ -882,9 +683,9 @@ function renderDash(){
 function renderTable(){
   const q=(document.getElementById('srch')?.value||'').toLowerCase();
   let data=visitors.filter(v=>(`${v.prenom||''}${v.nom||''}${v.email||''}${v.ville||''}`).toLowerCase().includes(q));
-  
+
   const sortBy=document.getElementById('sortBy')?.value||'recent';
-  
+
   if(sortBy==='prenom'){
     data.sort((a,b)=>(a.prenom||'').localeCompare((b.prenom||''),'fr'));
   }else if(sortBy==='nom'){
@@ -921,12 +722,11 @@ function renderTable(){
   };
 
   const sc=s=>{
-  if(s==='renouvellement')return'<span class="chip ca">À renouveler</span>';
-  if(s==='non')return'<span class="chip cn">Non inscrit</span>';
-  if(s==='oui')return'<span class="chip cy">Membre</span>';
-  if(s==='ancien')return'<span class="chip ca">Ancien</span>';
-  return'<span class="chip cn">—</span>';
-};
+    if(s==='renouvellement')return'<span class="chip ca">À renouveler</span>';
+    if(s==='non')return'<span class="chip cn">Non inscrit</span>';
+    if(s==='oui')return'<span class="chip cy">Membre</span>';
+    if(s==='ancien')return'<span class="chip ca">Ancien</span>';
+    return'<span class="chip cn">—</span>';
   };
 
   tb.innerHTML=data.map(v=>`
@@ -938,12 +738,11 @@ function renderTable(){
       <td><span class="chip cn" style="font-size:.65rem">${trancheAge(v.age)}</span></td>
       <td>${esc(v.telephone)||'<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:.76rem">${esc(v.email)||'<span style="color:var(--muted)">—</span>'}</td>
-      <td>${v.code_postal || '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${esc(v.code_postal)||'<span style="color:var(--muted)">—</span>'}</td>
       <td>${esc(v.ville)||'<span style="color:var(--muted)">—</span>'}</td>
       <td>${sc(v.inscrit_salle)}</td>
       <td>${yn(v.connait_reseaux)}</td>
       <td>${yn(v.vu_post_po)}</td>
-
       <td>
         <div class="vctr">
           <button class="cbtn" onclick="chgVisit(${v.id},-1)">−</button>
@@ -951,49 +750,73 @@ function renderTable(){
           <button class="cbtn" onclick="chgVisit(${v.id},1)">+</button>
         </div>
       </td>
-
       <td>
         ${v.inscrit_salle==='oui'
           ? ''
           : `<button class="btn-conv ${v.converti?'conv-on':''}" onclick="toggleConverti(${v.id})" title="${v.converti?'Inscrit':'Non inscrit'}">${v.converti?'✓':'○'}</button>`
         }
       </td>
-
       <td>
         <button class="btn-del" onclick="askDel(${v.id})">🗑</button>
       </td>
     </tr>
   `).join('');
 }
+
 async function toggleConverti(id){
-  const r=visitors.find(v=>v.id===id);if(!r)return;
-  r.converti=!r.converti;renderTable();renderDash();
+  const r=visitors.find(v=>v.id===id);
+  if(!r)return;
+  r.converti=!r.converti;
+  renderTable();
+  renderDash();
   await patch(id,{converti:r.converti});
 }
 
 async function chgVisit(id,d){
-  const r=visitors.find(v=>v.id===id);if(!r)return;
+  const r=visitors.find(v=>v.id===id);
+  if(!r)return;
   r.nb_visites=Math.max(1,(r.nb_visites||1)+d);
-  renderTable();renderDash();await patch(id,{nb_visites:r.nb_visites});
+  renderTable();
+  renderDash();
+  await patch(id,{nb_visites:r.nb_visites});
 }
 
 function askDel(id){
-  const r=visitors.find(v=>v.id===id);if(!r)return;
+  const r=visitors.find(v=>v.id===id);
+  if(!r)return;
   delId=id;
   document.getElementById('del-txt').textContent=`Supprimer ${r.prenom} ${r.nom} ? Cette action est irréversible.`;
   document.getElementById('del-modal').classList.add('on');
 }
-function closeModal(){delId=null;document.getElementById('del-modal').classList.remove('on');}
+
+function closeModal(){
+  delId=null;
+  document.getElementById('del-modal').classList.remove('on');
+}
+
 async function doDelete(){
   if(!delId)return;
-  try{await remove(delId);visitors=visitors.filter(v=>v.id!==delId);closeModal();renderTable();renderDash();updateBadge();}
-  catch(e){alert('Erreur suppression.');}
+  try{
+    await remove(delId);
+    visitors=visitors.filter(v=>v.id!==delId);
+    closeModal();
+    renderTable();
+    renderDash();
+    updateBadge();
+  }catch(e){
+    alert('Erreur suppression.');
+  }
 }
 
 function csv(){
-  if(!visitors.length){alert('Aucune donnée.');return;}
+  if(!visitors.length){
+    alert('Aucune donnée.');
+    return;
+  }
+
   const SEP=';';
   const h=['Prenom','Nom','Sexe','Age','Tranche_age','Telephone','Email','Code_postal','Ville','Statut_salle','Connait_reseaux','Vu_post_PO','Nb_visites','Converti','Date'];
+
   const rows=visitors.map(v=>[
     v.prenom,
     v.nom,
@@ -1011,6 +834,7 @@ function csv(){
     v.converti?'Oui':'Non',
     v.created_at?new Date(v.created_at).toLocaleString('fr-FR'):''
   ].map(c=>String(c||'').replace(/;/g,',')).join(SEP));
+
   const blob=new Blob(['\uFEFF'+[h.join(SEP),...rows].join('\n')],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -1018,7 +842,13 @@ function csv(){
   a.click();
 }
 
-function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(s){
+  if(!s)return'';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
 
 route();
 </script>
