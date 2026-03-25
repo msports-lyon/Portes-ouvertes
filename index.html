@@ -249,6 +249,14 @@ tr:hover td{background:var(--s2);}
       <div class="tbl-title">Visiteurs</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input class="srch" id="srch" type="text" placeholder="Rechercher…" oninput="renderTable()">
+        <select id="sortBy" class="srch" onchange="renderTable()" style="width:170px;">
+            <option value="recent">Trier : Plus récents</option>
+            <option value="prenom">Prénom A-Z</option>
+            <option value="nom">Nom A-Z</option>
+            <option value="ville">Ville A-Z</option>
+            <option value="visites_desc">Visites décroissantes</option>
+            <option value="visites_asc">Visites croissantes</option>
+        </select>
         <button class="btn-ghost" onclick="csv()">⬇ CSV</button>
       </div>
     </div>
@@ -375,9 +383,8 @@ tr:hover td{background:var(--s2);}
       <div class="fg">
         <div class="flabel">Tu es déjà inscrit(e) à la salle ? <span class="req">*</span></div>
         <div class="rpills" id="rpills-inscrit">
-          <div class="rpill" data-val="oui" onclick="pickPill('inscrit',this);toggleConnaitBlock()">✅ Oui, membre actif</div>
-          <div class="rpill" data-val="ancien" onclick="pickPill('inscrit',this);toggleConnaitBlock()">🕐 Ancien membre</div>
-          <div class="rpill" data-val="non" onclick="pickPill('inscrit',this);toggleConnaitBlock()">❌ Non</div>
+          <div class="rpill" data-val="renouvellement">🔄 Oui, à renouveler</div>
+          <div class="rpill" data-val="non">❌ Non</div></div>
         </div>
       </div>
 
@@ -600,7 +607,7 @@ function validateStep2(){
   const villeEl=document.getElementById('f-ville');
   if(!villeEl.value.trim()){markInvalid(villeEl);ok=false;}else markValid(villeEl);
   if(!fState.inscrit){document.querySelectorAll('#rpills-inscrit .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});ok=false;}
-  if((fState.inscrit==='non'||fState.inscrit==='ancien')&&!fState.connait){document.querySelectorAll('#rpills-connait .rpill').forEach(p=>{p.classList.add('invalid','shake');setTimeout(()=>p.classList.remove('shake'),400);});ok=false;}
+  if(!fState.connait){
   if(!ok){toast('t2b','err','⚠️ Merci de remplir tous les champs obligatoires.');return;}
   goStep('ps3',3);
 }
@@ -665,8 +672,7 @@ function pickPill(group,el){
   el.classList.add('on');
 }
 function toggleConnaitBlock(){
-  document.getElementById('connait-block').style.display=(fState.inscrit==='non'||fState.inscrit==='ancien')?'block':'none';
-  if(fState.inscrit==='oui')fState.connait=null;
+  document.getElementById('connait-block').style.display='block';
 }
 function toast(id,type,msg){
   const t=document.getElementById(id);t.className='toast '+(type==='ok'?'tok':'terr');t.textContent=msg;
@@ -744,7 +750,7 @@ async function doSubmit(){
       code_postal:cp||null,
       ville:ville||null,
       inscrit_salle:fState.inscrit||null,
-      connait_salle:(fState.inscrit==='oui')?'oui':(fState.connait||null),
+      connait_salle:(fState.connait||null),
       connait_reseaux:fState.connait_rs||null,
       vu_post_po:fState.vu_post||null,
       nb_visites:1,
@@ -823,15 +829,16 @@ function statutLabel(s){
 function renderDash(){
   const d=visitors,total=d.length;
   const totalV=d.reduce((s,v)=>s+(v.nb_visites||1),0);
-  document.getElementById('kpis').innerHTML=[
-    {v:total,l:'Visiteurs uniques'},{v:totalV,l:'Passages total'},
-    {v:total?(totalV/total).toFixed(1):0,l:'Visites / personne'},
-    {v:d.filter(v=>v.inscrit_salle==='oui').length,l:'Membres actifs'},
-    {v:d.filter(v=>v.inscrit_salle==='ancien').length,l:'Anciens membres'},
-    {v:d.filter(v=>v.connait_reseaux==='oui').length,l:'Connaissent nos réseaux'},
-    {v:d.filter(v=>v.vu_post_po==='oui').length,l:'Ont vu le post PO'},
-    {v:d.filter(v=>v.converti).length,l:'Convertis'},
-  ].map(k=>`<div class="kpi"><div class="kv">${k.v}</div><div class="kl">${k.l}</div></div>`).join('');
+     document.getElementById('kpis').innerHTML=[
+      {v:total,l:'Visiteurs uniques'},
+      {v:totalV,l:'Passages total'},
+      {v:total?(totalV/total).toFixed(1):0,l:'Visites / personne'},
+      {v:d.filter(v=>v.inscrit_salle==='renouvellement').length,l:'À renouveler'},
+      {v:d.filter(v=>v.inscrit_salle==='non').length,l:'Non inscrits'},
+      {v:d.filter(v=>v.connait_reseaux==='oui').length,l:'Connaissent nos réseaux'},
+      {v:d.filter(v=>v.vu_post_po==='oui').length,l:'Ont vu le post PO'},
+      {v:d.filter(v=>v.converti).length,l:'Convertis'},
+    ].map(k=>`<div class="kpi"><div class="kv">${k.v}</div><div class="kl">${k.l}</div></div>`).join('');
 
   const hm=d.filter(v=>v.sexe==='Homme').length,fm=d.filter(v=>v.sexe==='Femme').length;
   mkDonut('c-genre',['Hommes','Femmes','NR'],[hm,fm,total-hm-fm],[BLUE,PINK,GRAY]);
@@ -874,7 +881,23 @@ function renderDash(){
 
 function renderTable(){
   const q=(document.getElementById('srch')?.value||'').toLowerCase();
-  const data=visitors.filter(v=>(`${v.prenom||''}${v.nom||''}${v.email||''}${v.ville||''}`).toLowerCase().includes(q));
+  let data=visitors.filter(v=>(`${v.prenom||''}${v.nom||''}${v.email||''}${v.ville||''}`).toLowerCase().includes(q));
+  
+  const sortBy=document.getElementById('sortBy')?.value||'recent';
+  
+  if(sortBy==='prenom'){
+    data.sort((a,b)=>(a.prenom||'').localeCompare((b.prenom||''),'fr'));
+  }else if(sortBy==='nom'){
+    data.sort((a,b)=>(a.nom||'').localeCompare((b.nom||''),'fr'));
+  }else if(sortBy==='ville'){
+    data.sort((a,b)=>(a.ville||'').localeCompare((b.ville||''),'fr'));
+  }else if(sortBy==='visites_desc'){
+    data.sort((a,b)=>(b.nb_visites||0)-(a.nb_visites||0));
+  }else if(sortBy==='visites_asc'){
+    data.sort((a,b)=>(a.nb_visites||0)-(b.nb_visites||0));
+  }else{
+    data.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+  }
 
   const tb=document.getElementById('tbody');
   const em=document.getElementById('empty');
@@ -898,10 +921,12 @@ function renderTable(){
   };
 
   const sc=s=>{
-    if(s==='oui') return '<span class="chip cy">Membre</span>';
-    if(s==='ancien') return '<span class="chip ca">Ancien</span>';
-    if(s==='non') return '<span class="chip cn">Non membre</span>';
-    return '<span class="chip cn">—</span>';
+  if(s==='renouvellement')return'<span class="chip ca">À renouveler</span>';
+  if(s==='non')return'<span class="chip cn">Non inscrit</span>';
+  if(s==='oui')return'<span class="chip cy">Membre</span>';
+  if(s==='ancien')return'<span class="chip ca">Ancien</span>';
+  return'<span class="chip cn">—</span>';
+};
   };
 
   tb.innerHTML=data.map(v=>`
